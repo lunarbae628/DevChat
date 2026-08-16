@@ -49,8 +49,8 @@ class HookEntrypointsTest(unittest.TestCase):
             '"$(git rev-parse --show-toplevel)/.codex/hooks/log_ai_event.py"',
             f'"{HOOK_DIR / "log_ai_event.py"}"',
         ).replace(
-            '"$(git rev-parse --show-toplevel)/.codex/hooks/summarize_ai_log.py"',
-            f'"{HOOK_DIR / "summarize_ai_log.py"}"',
+            '"$(git rev-parse --show-toplevel)/.codex/hooks/check_knowledge_record.py"',
+            f'"{HOOK_DIR / "check_knowledge_record.py"}"',
         )
 
     def invoke(self, event_name: str, payload: dict):
@@ -199,6 +199,80 @@ class HookEntrypointsTest(unittest.TestCase):
         self.assertEqual(json.loads(result.stdout), {"continue": True})
         log_path = self.repo / "ai" / "logs" / safe_session_filename(session_id)
         self.assertIn('"event":"SubagentStop"', log_path.read_text(encoding="utf-8"))
+
+    def test_stop_hook_asks_once_after_a_session_code_change(self):
+        session_id = "knowledge-record-session"
+        common = {
+            "session_id": session_id,
+            "turn_id": "turn-1",
+            "cwd": str(self.repo),
+        }
+        baseline = self.invoke(
+            "UserPromptSubmit",
+            {
+                **common,
+                "hook_event_name": "UserPromptSubmit",
+                "prompt": "설정을 수정해줘",
+            },
+        )
+        self.assertEqual(baseline.returncode, 0)
+        (self.repo / "tracked.txt").write_text("changed\n", encoding="utf-8")
+
+        payload = {
+            **common,
+            "hook_event_name": "Stop",
+            "stop_hook_active": False,
+            "last_assistant_message": "구현과 검증을 마쳤습니다.",
+        }
+        first = self.invoke("Stop", payload)
+
+        self.assertEqual(first.returncode, 0)
+        output = json.loads(first.stdout)
+        self.assertEqual(output["decision"], "block")
+        self.assertIn("지식 기록", output["reason"])
+
+        continued = self.invoke("Stop", {**payload, "stop_hook_active": True})
+        self.assertEqual(continued.returncode, 0)
+        self.assertEqual(continued.stdout, "")
+
+        repeated = self.invoke("Stop", payload)
+        self.assertEqual(repeated.returncode, 0)
+        self.assertEqual(repeated.stdout, "")
+        self.assertEqual(list((self.repo / "ai" / "summaries").glob("*.md")), [])
+
+    def test_stop_hook_skips_when_session_already_has_a_knowledge_record(self):
+        session_id = "knowledge-record-created-session"
+        common = {
+            "session_id": session_id,
+            "turn_id": "turn-1",
+            "cwd": str(self.repo),
+        }
+        baseline = self.invoke(
+            "UserPromptSubmit",
+            {
+                **common,
+                "hook_event_name": "UserPromptSubmit",
+                "prompt": "구현해줘",
+            },
+        )
+        self.assertEqual(baseline.returncode, 0)
+        (self.repo / "tracked.txt").write_text("changed\n", encoding="utf-8")
+        record = self.repo / "docs" / "knowledge" / "changes" / "2026-08-16-test.md"
+        record.parent.mkdir(parents=True)
+        record.write_text("# Test record\n", encoding="utf-8")
+
+        result = self.invoke(
+            "Stop",
+            {
+                **common,
+                "hook_event_name": "Stop",
+                "stop_hook_active": False,
+                "last_assistant_message": "기록을 만들었습니다.",
+            },
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
 
     def test_logging_only_lifecycle_hooks_return_empty_stdout(self):
         payloads = (

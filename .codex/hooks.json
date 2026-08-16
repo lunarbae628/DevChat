@@ -88,6 +88,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/check_knowledge_record.py\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

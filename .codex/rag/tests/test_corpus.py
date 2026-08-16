@@ -31,26 +31,53 @@ class CorpusTest(unittest.TestCase):
         run_git(self.repo, "config", "user.name", "RAG Test")
         run_git(self.repo, "config", "user.email", "rag@example.com")
         (self.repo / "AGENTS.md").write_text("# Rules\n", encoding="utf-8")
+        (self.repo / "README.md").write_text("# Root\n", encoding="utf-8")
         (self.repo / "draft.md").write_text("# Draft\n", encoding="utf-8")
+        (self.repo / "frontend").mkdir()
+        (self.repo / "frontend" / "README.md").write_text("# Frontend\n", encoding="utf-8")
+        (self.repo / "ai" / "workflow.md").parent.mkdir(parents=True)
+        (self.repo / "ai" / "workflow.md").write_text("# Workflow\n", encoding="utf-8")
         (self.repo / "ai" / "logs").mkdir(parents=True)
         (self.repo / "ai" / "logs" / "session.jsonl").write_text("{}\n", encoding="utf-8")
-        run_git(self.repo, "add", "AGENTS.md", "draft.md")
+        (self.repo / "ai" / "summaries").mkdir(parents=True)
+        (self.repo / "ai" / "summaries" / "old.md").write_text("# Old\n", encoding="utf-8")
+        (self.repo / "docs" / "knowledge" / "changes").mkdir(parents=True)
+        (self.repo / "docs" / "knowledge" / "changes" / "record.md").write_text(
+            "# Record\n", encoding="utf-8"
+        )
+        (self.repo / "docs" / "superpowers" / "specs").mkdir(parents=True)
+        (self.repo / "docs" / "superpowers" / "specs" / "active.md").write_text(
+            "# Active\n", encoding="utf-8"
+        )
+        (self.repo / "docs" / "superpowers" / "specs" / "superseded.md").write_text(
+            "> **상태: superseded.**\n", encoding="utf-8"
+        )
+        (self.repo / "docs" / "superpowers" / "specs" / "draft.md").write_text(
+            "> **상태: draft.**\n", encoding="utf-8"
+        )
+        run_git(
+            self.repo,
+            "add",
+            "AGENTS.md",
+            "README.md",
+            "draft.md",
+            "frontend/README.md",
+            "ai/workflow.md",
+            "ai/summaries/old.md",
+            "docs",
+        )
         run_git(self.repo, "commit", "-m", "baseline")
         self.manifest = self.repo / "corpus.json"
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def test_load_active_documents_filters_untracked_outside_and_non_active_paths(self) -> None:
+    def test_load_active_documents_filters_untracked_and_excluded_paths(self) -> None:
         self.manifest.write_text(
             json.dumps(
                 {
-                    "documents": [
-                        {"path": "AGENTS.md", "status": "active"},
-                        {"path": "ai/logs/session.jsonl", "status": "active"},
-                        {"path": "../secret.md", "status": "active"},
-                        {"path": "draft.md", "status": "draft"},
-                    ]
+                    "include": ["AGENTS.md", "draft.md", "ai/logs/**", "untracked.md"],
+                    "exclude": ["draft.md"],
                 }
             ),
             encoding="utf-8",
@@ -59,6 +86,47 @@ class CorpusTest(unittest.TestCase):
         documents = load_active_documents(self.repo, self.manifest)
 
         self.assertEqual([document.path for document in documents], ["AGENTS.md"])
+
+    def test_load_active_documents_expands_ranges_and_excludes_non_current_documents(self) -> None:
+        self.manifest.write_text(
+            json.dumps(
+                {
+                    "include": [
+                        "AGENTS.md",
+                        "ai/*.md",
+                        "docs/knowledge/**/*.md",
+                        "docs/superpowers/specs/**/*.md",
+                    ],
+                    "exclude": ["ai/summaries/**"],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        documents = load_active_documents(self.repo, self.manifest)
+
+        self.assertEqual(
+            [document.path for document in documents],
+            [
+                "AGENTS.md",
+                "ai/workflow.md",
+                "docs/knowledge/changes/record.md",
+                "docs/superpowers/specs/active.md",
+            ],
+        )
+
+    def test_load_active_documents_matches_patterns_from_repository_root(self) -> None:
+        self.manifest.write_text(
+            json.dumps({"include": ["README.md", "ai/*.md"], "exclude": []}),
+            encoding="utf-8",
+        )
+
+        documents = load_active_documents(self.repo, self.manifest)
+
+        self.assertEqual(
+            [document.path for document in documents],
+            ["README.md", "ai/workflow.md"],
+        )
 
     def test_load_active_documents_rejects_excluded_directories_and_tracked_symlinks(self) -> None:
         (self.repo / "docs" / "superpowers" / "plans").mkdir(parents=True)
@@ -72,12 +140,13 @@ class CorpusTest(unittest.TestCase):
         self.manifest.write_text(
             json.dumps(
                 {
-                    "documents": [
-                        {"path": "AGENTS.md", "status": "active"},
-                        {"path": "docs/superpowers/plans/plan.md", "status": "active"},
-                        {"path": "docs/local/notes.md", "status": "active"},
-                        {"path": "linked.md", "status": "active"},
-                    ]
+                    "include": [
+                        "AGENTS.md",
+                        "docs/superpowers/plans/**/*.md",
+                        "docs/local/**/*.md",
+                        "linked.md",
+                    ],
+                    "exclude": [],
                 }
             ),
             encoding="utf-8",

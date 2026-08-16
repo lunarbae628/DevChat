@@ -23,14 +23,14 @@
 
 - Codex Logging Hook은 요청과 도구 실행의 추적을 돕는 관찰 장치이며 보안 경계나 권한 Guard가 아니다.
 - 원본 프롬프트와 전체 도구 결과를 커밋하지 않는다. `ai/logs/*.jsonl`은 로컬에만 둔다.
-- Stop Hook은 Markdown 요약을 자동 생성하지 않는다. 이전 `ai/summaries/` 파일은 로컬 보관 자료이며 Git에 커밋하지 않는다.
+- Stop Hook은 Markdown 요약을 자동 생성하지 않는다. 세션에서 코드 변경이 있으면 지식 기록 생성 또는 작은 작업 면제를 한 번 확인하며, 질문 완료 상태는 Git 제외 로컬 파일로만 보관한다. 이전 `ai/summaries/` 파일은 로컬 보관 자료이며 Git에 커밋하지 않는다.
 - 기록이 있다는 이유만으로 동일 코드 재현, AI 정확성 또는 개발 안정성 향상을 주장하지 않는다.
 
 ## 코드 변경 완료 기록과 PR
 
-- 코드가 변경되고 관련 테스트가 통과하면, 최종 응답 전에 `docs/knowledge/changes/YYYY-MM-DD-<branch-or-topic>.md`에 작업당 하나의 사실 기반 지식 기록을 작성한다.
+- Stop Hook이 코드 변경 완료 시 지식 기록 생성 여부를 한 번 확인한다. 사용자가 생성 또는 작은 작업 면제를 이미 명시했다면 그 지시를 따르며, 기록을 만들기로 하면 `docs/knowledge/changes/YYYY-MM-DD-<branch-or-topic>.md`에 작업당 하나의 사실 기반 지식 기록을 작성한다.
 - 지식 기록은 `목적`, `변경 사항`, `영향 범위`, `검증`, `남은 리스크`를 포함한다. 계획·추측·원본 프롬프트·전체 도구 출력은 넣지 않는다.
-- 새 지식 기록은 `ai/rag/corpus.json`에 `active`로 명시한다. RAG는 Git 추적 문서만 색인하므로 기록이 commit된 뒤 로컬 RAG index를 다시 생성해 검색에 반영한다. `docs/superpowers/plans/`, `docs/local/`, `draft`, `superseded` 문서는 RAG에 넣지 않는다.
+- 새 지식 기록은 `ai/rag/corpus.json`의 `docs/knowledge/**/*.md` 범위에 자동 포함된다. RAG는 Git 추적 문서만 색인하므로 기록이 commit된 뒤 로컬 RAG index를 다시 생성해 검색에 반영한다. `docs/superpowers/plans/`, `docs/local/`, `draft`, `superseded`, `ai/summaries/` 문서는 RAG에 넣지 않는다.
 - PR 본문은 `.github/PULL_REQUEST_TEMPLATE.md` 구조로 항상 작성한다. 현재 HEAD가 원격 현재 브랜치에 이미 push된 경우 `gh`로 draft PR을 생성하거나 갱신한다. 그렇지 않거나 `gh`를 사용할 수 없으면 Git 제외 `_workspace/`에 PR 본문 Markdown 초안을 만든다.
 - PR 생성 전에는 `git remote -v`, head branch, base branch를 확인하고, 개인 저장소의 정확한 원격과 base branch를 사용자에게 명시한다. 다른 저장소에 만든 PR은 이동할 수 없으므로 닫고 올바른 저장소에 새 PR을 만든다.
 - PR 본문 `작업 내용`에는 비자명한 변경마다 `문제와 목표`, `변경 사항`, `사용 방법 또는 동작 변화`, `주요 선택과 근거`, `영향 범위`를 포함한다. 단순 문서 수정이나 한 줄 버그 수정은 문제·변경·검증만 작성할 수 있다.
@@ -63,6 +63,7 @@
 - 문서 길이는 적용 기준이 아니다. `docs/superpowers/plans`, 내부 설계 초안, `AGENTS.md`, 테스트 문서, 코드 주석, 작업 메모, Hook 요약 초안과 커밋 메시지에는 기본적으로 적용하지 않는다.
 - 기본 제외 문서라도 사용자가 명시적으로 윤문을 요청하면 적용한다.
 - 사실, 수치, 날짜, 코드 식별자, 명령어, API 계약, 파일 경로와 직접 인용은 바꾸지 않는다. 문체를 다듬는 과정에서 새로운 주장이나 근거를 추가하지 않는다.
+- PR과 Issue 등 외부 공개용 한국어 문서는 `-습니다`, `-합니다`, `-이다`, `-했다` 계열 종결을 쓰지 않고 명사형으로 끝낸다. 특수문자 `·`는 쓰지 않고 쉼표 또는 괄호로 바꾼다.
 - PR은 `.github/PULL_REQUEST_TEMPLATE.md` 구조를 유지한다. AI를 사용했다면 사용 범위, 채택·기각한 제안, 실행한 검증과 남은 리스크를 구체적으로 작성한다.
 - `humanize-korean`을 사용할 수 없는 환경에서는 같은 원칙으로 직접 검토하며 문서 작업을 중단하지 않는다.
 - `humanize-korean`의 `_workspace/` 산출물은 로컬 검토 자료로만 사용하고 Git에 커밋하지 않는다. 최상위 작업 폴더는 `YYYY-MM-DD-<topic>` 형식의 소문자 kebab-case 이름을 사용한다. 날짜와 숫자만으로 된 폴더명은 만들지 않는다.

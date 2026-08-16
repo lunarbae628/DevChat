@@ -23,6 +23,7 @@ class HookConfigTest(unittest.TestCase):
                 "PermissionRequest",
                 "PreToolUse",
                 "PostToolUse",
+                "Stop",
             },
         )
 
@@ -71,8 +72,15 @@ class HookConfigTest(unittest.TestCase):
         self.assertNotIn("additionalContext", serialized)
         self.assertNotIn("additionalContextLimit", serialized)
 
-    def test_does_not_register_stop_summary_generation(self):
-        self.assertNotIn("Stop", load_config()["hooks"])
+    def test_stop_hook_uses_knowledge_record_check_without_summary_generation(self):
+        commands = [
+            handler["command"]
+            for group in load_config()["hooks"]["Stop"]
+            for handler in group["hooks"]
+        ]
+
+        self.assertTrue(any("check_knowledge_record.py" in command for command in commands))
+        self.assertFalse(any("summarize" in command for command in commands))
 
 
 if __name__ == "__main__":

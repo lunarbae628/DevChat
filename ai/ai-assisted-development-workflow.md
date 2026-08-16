@@ -42,4 +42,4 @@ Logging Hook은 실행을 관찰할 뿐 위험 명령을 차단하지 않는다.
 
 ## 종료 기록
 
-`Stop` Hook과 자동 Markdown 요약·토큰 사용량 snapshot 생성은 제거됐다. 기존 `ai/summaries/` 파일은 로컬 보관 자료이며 새 작업 기록은 생성하지 않는다. 테스트를 통과한 코드 변경의 목적·검증·남은 리스크는 `docs/knowledge/changes/` 지식 기록과 PR 본문에 사람이 남긴다.
+자동 Markdown 요약·토큰 사용량 snapshot 생성은 제거됐다. 기존 `ai/summaries/` 파일은 로컬 보관 자료이며 새 작업 기록은 생성하지 않는다. `Stop` Hook은 세션 시작 이후 코드 변경이 있고 아직 질문하지 않았을 때만 continuation으로 지식 기록 생성 또는 작은 작업 면제를 묻도록 Codex에 지시한다. 질문 완료 상태는 Git에서 제외한 `ai/logs/*.knowledge-record-check.json`에만 남긴다. 기록을 만들기로 하면 테스트를 통과한 코드 변경의 목적·검증·남은 리스크를 `docs/knowledge/changes/`와 PR 본문에 사람이 남긴다.
