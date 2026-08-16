@@ -19,6 +19,7 @@
 
 # Local AI workflow logs
 /ai/logs/*.jsonl
+/ai/logs/*.knowledge-record-check.json
 /ai/summaries/*.md
 
 # Local RAG index

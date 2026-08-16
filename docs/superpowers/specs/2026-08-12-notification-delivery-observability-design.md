@@ -1,5 +1,7 @@
 # DevChat Notification Delivery Observability Design
 
+> **상태: draft.** 검토용 설계 문서이며 현재 운영 기준이나 RAG 검색 대상이 아니다.
+
 ## 현재 문제
 
 알림 흐름마다 DB 저장과 WebSocket 전송 경계가 다르다.

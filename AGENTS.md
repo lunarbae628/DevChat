@@ -23,14 +23,14 @@
 
 - Codex Logging Hook은 요청과 도구 실행의 추적을 돕는 관찰 장치이며 보안 경계나 권한 Guard가 아니다.
 - 원본 프롬프트와 전체 도구 결과를 커밋하지 않는다. `ai/logs/*.jsonl`은 로컬에만 둔다.
-- Stop Hook은 Markdown 요약을 자동 생성하지 않는다. 이전 `ai/summaries/` 파일은 로컬 보관 자료이며 Git에 커밋하지 않는다.
+- Stop Hook은 Markdown 요약을 자동 생성하지 않는다. 세션에서 코드 변경이 있으면 지식 기록 생성 또는 작은 작업 면제를 한 번 확인하며, 질문 완료 상태는 Git 제외 로컬 파일로만 보관한다. 이전 `ai/summaries/` 파일은 로컬 보관 자료이며 Git에 커밋하지 않는다.
 - 기록이 있다는 이유만으로 동일 코드 재현, AI 정확성 또는 개발 안정성 향상을 주장하지 않는다.
 
 ## 코드 변경 완료 기록과 PR
 
-- 코드가 변경되고 관련 테스트가 통과하면, 최종 응답 전에 `docs/knowledge/changes/YYYY-MM-DD-<branch-or-topic>.md`에 작업당 하나의 사실 기반 지식 기록을 작성한다.
+- Stop Hook이 코드 변경 완료 시 지식 기록 생성 여부를 한 번 확인한다. 사용자가 생성 또는 작은 작업 면제를 이미 명시했다면 그 지시를 따르며, 기록을 만들기로 하면 `docs/knowledge/changes/YYYY-MM-DD-<branch-or-topic>.md`에 작업당 하나의 사실 기반 지식 기록을 작성한다.
 - 지식 기록은 `목적`, `변경 사항`, `영향 범위`, `검증`, `남은 리스크`를 포함한다. 계획·추측·원본 프롬프트·전체 도구 출력은 넣지 않는다.
-- 새 지식 기록은 `ai/rag/corpus.json`에 `active`로 명시한다. RAG는 Git 추적 문서만 색인하므로 기록이 commit된 뒤 로컬 RAG index를 다시 생성해 검색에 반영한다. `docs/superpowers/plans/`, `docs/local/`, `draft`, `superseded` 문서는 RAG에 넣지 않는다.
+- 새 지식 기록은 `ai/rag/corpus.json`의 `docs/knowledge/**/*.md` 범위에 자동 포함된다. RAG는 Git 추적 문서만 색인하므로 기록이 commit된 뒤 로컬 RAG index를 다시 생성해 검색에 반영한다. `docs/superpowers/plans/`, `docs/local/`, `draft`, `superseded`, `ai/summaries/` 문서는 RAG에 넣지 않는다.
 - PR 본문은 `.github/PULL_REQUEST_TEMPLATE.md` 구조로 항상 작성한다. 현재 HEAD가 원격 현재 브랜치에 이미 push된 경우 `gh`로 draft PR을 생성하거나 갱신한다. 그렇지 않거나 `gh`를 사용할 수 없으면 Git 제외 `_workspace/`에 PR 본문 Markdown 초안을 만든다.
 - PR 생성 전에는 `git remote -v`, head branch, base branch를 확인하고, 개인 저장소의 정확한 원격과 base branch를 사용자에게 명시한다. 다른 저장소에 만든 PR은 이동할 수 없으므로 닫고 올바른 저장소에 새 PR을 만든다.
 - PR 본문 `작업 내용`에는 비자명한 변경마다 `문제와 목표`, `변경 사항`, `사용 방법 또는 동작 변화`, `주요 선택과 근거`, `영향 범위`를 포함한다. 단순 문서 수정이나 한 줄 버그 수정은 문제·변경·검증만 작성할 수 있다.

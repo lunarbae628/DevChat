@@ -1,21 +1,20 @@
 {
   "embedding_model": "intfloat/multilingual-e5-small",
   "dense_min_score": 0.88,
-  "documents": [
-    {"path": "AGENTS.md", "status": "active"},
-    {"path": "README.md", "status": "active"},
-    {"path": "ai/ai-assisted-development-workflow.md", "status": "active"},
-    {"path": "ai/permission-guard-policy.md", "status": "active"},
-    {"path": "ai/permission-guard-case-study.md", "status": "active"},
-    {"path": "docs/superpowers/specs/2026-08-05-homeserver-blue-green-deployment-design.md", "status": "active"},
-    {"path": "docs/superpowers/specs/2026-08-08-query-plan-analysis-design.md", "status": "active"},
-    {"path": "docs/superpowers/specs/2026-08-11-dm-cursor-pagination-design.md", "status": "active"},
-    {"path": "docs/superpowers/specs/2026-08-12-ai-workflow-logging-hooks-design.md", "status": "superseded"},
-    {"path": "docs/knowledge/changes/2026-08-13-hybrid-rag.md", "status": "active"},
-    {"path": "docs/knowledge/changes/2026-08-13-ai-workflow-completion.md", "status": "active"},
-    {"path": "docs/superpowers/specs/2026-08-12-notification-delivery-observability-design.md", "status": "draft"},
-    {"path": "docs/superpowers/specs/2026-08-12-ai-permission-guard-design.md", "status": "active"},
-    {"path": "docs/knowledge/changes/2026-08-13-hybrid-rag-pr7-review-fixes.md", "status": "active"},
-    {"path": "docs/knowledge/changes/2026-08-14-notification-delivery-failure-handling.md", "status": "active"}
+  "include": [
+    "AGENTS.md",
+    "README.md",
+    "ai/*.md",
+    "docs/knowledge/**/*.md",
+    "docs/superpowers/specs/**/*.md"
+  ],
+  "exclude": [
+    "ai/logs/**",
+    "ai/summaries/**",
+    "docs/local/**",
+    "docs/superpowers/plans/**",
+    "_workspace/**",
+    "**/draft/**",
+    "**/superseded/**"
   ]
 }
