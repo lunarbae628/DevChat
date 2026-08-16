@@ -15,6 +15,7 @@
     {"path": "docs/knowledge/changes/2026-08-13-ai-workflow-completion.md", "status": "active"},
     {"path": "docs/superpowers/specs/2026-08-12-notification-delivery-observability-design.md", "status": "draft"},
     {"path": "docs/superpowers/specs/2026-08-12-ai-permission-guard-design.md", "status": "active"},
-    {"path": "docs/knowledge/changes/2026-08-13-hybrid-rag-pr7-review-fixes.md", "status": "active"}
+    {"path": "docs/knowledge/changes/2026-08-13-hybrid-rag-pr7-review-fixes.md", "status": "active"},
+    {"path": "docs/knowledge/changes/2026-08-14-notification-delivery-failure-handling.md", "status": "active"}
   ]
 }

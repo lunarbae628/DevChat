@@ -20,11 +20,15 @@ public record NotificationDto(
 
     // Notification 객체로부터 생성
     public static NotificationDto ofNotification(Notification notification) {
+        return ofNotification(notification, notification.getReceiver().getUsername());
+    }
+
+    public static NotificationDto ofNotification(Notification notification, String receiverUsername) {
         return new NotificationDto(
             notification.getId(),
             notification.isRead(),
             notification.getType(),
-            notification.getReceiver().getUsername(),
+            receiverUsername,
             notification.getSender().getUsername(),
             notification.getSender().getNickname(),
             notification.getSender().getProfileImage(),

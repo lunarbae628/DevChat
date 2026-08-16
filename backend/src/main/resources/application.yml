@@ -81,3 +81,12 @@ jwt:
   info:
     issuer: "대한민국26세 달성 배씨 배문성의 허가가 있는 토큰이올시다."
     secret: ${JWT_SECRET:local-development-only-jwt-secret-change-me}
+
+app:
+  notification-delivery:
+    core-pool-size: 2
+    max-pool-size: 4
+    queue-capacity: 100
+    discord:
+      webhook-url: ${NOTIFICATION_DELIVERY_DISCORD_WEBHOOK_URL:}
+      alert-cooldown: 5m

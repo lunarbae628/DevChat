@@ -1,12 +1,14 @@
 package project.backend.global.config.async;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -14,6 +16,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @Configuration
 @EnableAsync
 @RequiredArgsConstructor
+@EnableConfigurationProperties(NotificationDeliveryProperties.class)
 public class AsyncConfig {
 
     private final CustomRejectedExecutionHandler customRejectedExecutionHandler;
@@ -54,6 +57,30 @@ public class AsyncConfig {
                 meterRegistry.counter("chat.seq.executor.rejected").increment();
                 log.warn("seq 채번 큐 포화 - 드랍 처리 (풀 크기 조정 필요)");
         });
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "notificationDeliveryExecutor")
+    public Executor getNotificationDeliveryExecutor(NotificationDeliveryProperties properties) {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(properties.corePoolSize());
+        executor.setMaxPoolSize(properties.maxPoolSize());
+        executor.setQueueCapacity(properties.queueCapacity());
+        executor.setThreadNamePrefix("NotificationDelivery-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "notificationAlertExecutor")
+    public Executor getNotificationAlertExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
+        executor.setQueueCapacity(20);
+        executor.setThreadNamePrefix("NotificationAlert-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
         executor.initialize();
         return executor;
     }
