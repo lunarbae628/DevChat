@@ -166,6 +166,7 @@ public class ChatRoomService {
         return chatRoomReadService.findAllRoomsWithUnread(roomProjections, alarmEnabledMap);
     }
 
+    @Transactional
     public EntryRoomResponse getEntryInfo(String inviteCode, Long memberId) {
         ChatRoom room = getByInviteCode(inviteCode);
 
