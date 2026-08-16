@@ -24,15 +24,20 @@ public record NotificationDto(
     }
 
     public static NotificationDto ofNotification(Notification notification, String receiverUsername) {
+        return ofNotification(notification, receiverUsername, notification.getSender().getNickname());
+    }
+
+    public static NotificationDto ofNotification(Notification notification, String receiverUsername,
+        String senderNickname) {
         return new NotificationDto(
             notification.getId(),
             notification.isRead(),
             notification.getType(),
             receiverUsername,
             notification.getSender().getUsername(),
-            notification.getSender().getNickname(),
+            senderNickname,
             notification.getSender().getProfileImage(),
-            getContentByType(notification.getSender().getNickname(), notification.getType()),
+            getContentByType(senderNickname, notification.getType()),
             notification.getReferenceId(),
             notification.getCreatedAt()
         );

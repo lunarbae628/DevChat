@@ -30,7 +30,8 @@ public class ApplicantEventListener {
             Notification.ofStudyApply(receiver, sender, event.postId())
         );
 
-        eventPublisher.publishEvent(NotificationDto.ofNotification(saved, event.authorUsername()));
+        eventPublisher.publishEvent(NotificationDto.ofNotification(saved, event.authorUsername(),
+            event.applicantNickname()));
     }
 
     @EventListener
@@ -47,6 +48,7 @@ public class ApplicantEventListener {
             Notification.ofStudyResult(receiver, sender, event.postId(), type)
         );
 
-        eventPublisher.publishEvent(NotificationDto.ofNotification(saved, event.applicantUsername()));
+        eventPublisher.publishEvent(NotificationDto.ofNotification(saved, event.applicantUsername(),
+            event.authorNickname()));
     }
 }
