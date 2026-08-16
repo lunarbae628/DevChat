@@ -47,6 +47,7 @@ public class CommunityMapper {
                 applicant.getMember().getId(),
                 applicant.getMember().getUsername(),
                 post.getAuthor().getId(),
+                post.getAuthor().getNickname(),
                 post.getId(),
                 post.getTitle(),
                 approved

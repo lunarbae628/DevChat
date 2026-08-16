@@ -18,8 +18,12 @@ public class ProfileImageCache {
     private static final long PROFILE_TTL_SEC = 60 * 60 * 24 * 7L; // 7일
 
     public void setProfileImage(Long memberId, String profileImg) {
-        String key = String.format(MEMBER_PROFILE_KEY, memberId);
-        redisTemplate.opsForValue().set(key, profileImg, PROFILE_TTL_SEC, TimeUnit.SECONDS);
+        try {
+            String key = String.format(MEMBER_PROFILE_KEY, memberId);
+            redisTemplate.opsForValue().set(key, profileImg, PROFILE_TTL_SEC, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.warn("Redis 장애 - 프로필 이미지 저장 실패 memberId={}", memberId);
+        }
     }
 
     public String getProfileImage(Long memberId) {
