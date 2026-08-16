@@ -1,0 +1,27 @@
+services:
+  devchat-app-blue:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: devchat-backend:local
+    ports:
+      - "8080:8080"
+
+  devchat-prometheus:
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.local.yml:/etc/prometheus/prometheus.yml:ro
+      - devchat_prometheus_data:/prometheus
+
+  devchat-grafana:
+    environment:
+      GF_SERVER_ROOT_URL: http://localhost:3001/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "false"
+    ports:
+      - "3001:3000"
+
+networks:
+  devchat_proxy_net:
+    external: false
+    name: devchat_local_proxy_net
