@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import project.backend.domain.chat.chatmessage.app.ChatMessageService;
 import project.backend.domain.chat.chatmessage.entity.ChatMessage;
 import project.backend.domain.chat.chatroom.dao.ChatRoomRepository;
@@ -63,7 +64,7 @@ public class ChatRoomService {
 
         chatRoomAlarmService.createAlarm(ownerId, chatRoom.getId());
 
-        if (!request.getRepositoryUrl().isBlank()) {
+        if (StringUtils.hasText(request.getRepositoryUrl())) {
             gitMessageService.registerWebhook(request.getRepositoryUrl(),
                     savedRoom.getId(), owner.getId());
             joinGitHubBot(savedRoom);

@@ -98,6 +98,24 @@ class ChatRoomServiceTest {
         }
 
         @Test
+        @DisplayName("레포지토리 URL이 없으면 null이어도 웹훅 등록 없이 방이 생성된다")
+        void createChatRoom_nullRepository_success() {
+            ChatRoomRequest request = mock(ChatRoomRequest.class);
+            given(request.getRepositoryUrl()).willReturn(null);
+            given(memberService.getMemberById(1L)).willReturn(owner);
+            given(chatRoomMapper.toEntity(request)).willReturn(chatRoom);
+            given(chatRoomRepository.save(chatRoom)).willReturn(chatRoom);
+            ChatRoomSimpleResponse expected = mock(ChatRoomSimpleResponse.class);
+            given(chatRoomMapper.toSimpleResponse(chatRoom, owner)).willReturn(expected);
+
+            ChatRoomSimpleResponse result = chatRoomService.createChatRoom(request, 1L);
+
+            assertThat(result).isEqualTo(expected);
+            then(gitMessageService).should(never()).registerWebhook(anyString(), anyLong(), anyLong());
+            then(memberService).should(never()).getMemberByUsername("github-bot");
+        }
+
+        @Test
         @DisplayName("레포지토리 URL이 있으면 웹훅 등록과 깃허브봇 참가가 실행된다")
         void createChatRoom_withRepository_registersWebhookAndBot() {
             given(chatRoom.getId()).willReturn(10L);

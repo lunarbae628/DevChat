@@ -81,9 +81,6 @@ public class GitMessageService {
 
 		String webhookUrl = makeWebhookUrl(roomId);
 
-		gitHubClient.validateAdminPermission(githubAccessToken,
-				gitRepoDto.ownerName(), gitRepoDto.repoName());
-
 		Long webhookId = gitHubClient.registerWebhook(githubAccessToken,
 				gitRepoDto.ownerName(), gitRepoDto.repoName(), webhookUrl);
 
