@@ -25,7 +25,9 @@ instance.interceptors.response.use(
     const { config, response } = error;
     const originalRequest = config;
 
-    if (response?.status === 401 && !originalRequest._retry) {
+    if (response?.status === 401
+      && response?.data?.code === 'AUTH_REFRESH_REQUIRED'
+      && !originalRequest._retry) {
       originalRequest._retry = true;
 
       return new Promise((resolve, reject) => {
