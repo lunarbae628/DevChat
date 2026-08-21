@@ -1,77 +1,35 @@
 package project.backend.domain.chat.github;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.util.StreamUtils;
+import org.springframework.web.client.RestClient;
 import project.backend.global.exception.errorcode.GitHubErrorCode;
 import project.backend.global.exception.ex.GitHubException;
-import reactor.core.publisher.Mono;
 
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class GitHubClient {
 
-    private final WebClient.Builder webClientBuilder;
+    private final RestClient restClient;
 
-    public boolean validateAdminPermission(String accessToken, String owner, String repo) {
-        String url = "https://api.github.com/repos/" + owner + "/" + repo; //요청할 api
+    public GitHubClient() {
+        this(createRestClient());
+    }
 
-        Map<String, Object> response = webClientBuilder.build()
-            .get()
-            .uri(url)
-            .header("Authorization", "Bearer " + accessToken)
-            .retrieve()
-            .onStatus(HttpStatusCode::is4xxClientError, error ->
-                error.bodyToMono(String.class)
-                    .flatMap(errorBody -> {
-                        if (error.statusCode() == HttpStatus.UNAUTHORIZED) {
-                            log.error(errorBody);
-                            return Mono.error(new GitHubException(GitHubErrorCode.INVALID_TOKEN));
-                        } else if (error.statusCode() == HttpStatus.NOT_FOUND) {
-                            log.error(errorBody);
-                            return Mono.error(new GitHubException(GitHubErrorCode.REPO_NOT_FOUND));
-                        } else {
-                            log.error("GitHubErrorCode.CLIENT_ERROR: {}", errorBody);
-                            return Mono.error(new GitHubException(GitHubErrorCode.CLIENT_ERROR));
-                        }
-                    })
-            )
-            .onStatus(HttpStatusCode::is5xxServerError, error ->
-                error.bodyToMono(String.class)
-                    .flatMap(errorBody -> {
-                        log.error("GitHubErrorCode.CLIENT_ERROR: {}", errorBody);
-                        return Mono.error(new GitHubException(GitHubErrorCode.SERVER_ERROR));
-                    })
-            )
-            .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
-            })
-            .block();
-
-        // jon 응답 구조에서 "permissions": {"admin": true} 이면 레포 접근 권한 있는거임
-        if (response == null || !response.containsKey("permissions")) {
-            throw new GitHubException(GitHubErrorCode.UNEXPECTED_RESPONSE);
-        }
-
-        Map<String, Boolean> permissions = (Map<String, Boolean>) response.get("permissions");
-        boolean isAdmin = permissions.getOrDefault("admin", false);
-
-        if (!isAdmin) {
-            throw new GitHubException(GitHubErrorCode.UNAUTHORIZED_REPO);
-        }
-
-        return true;
+    GitHubClient(RestClient restClient) {
+        this.restClient = restClient;
     }
 
     public Long registerWebhook(String accessToken, String owner, String repo, String webhookUrl) {
-        String apiUrl = "https://api.github.com/repos/" + owner + "/" + repo + "/hooks";
-
         Map<String, Object> requestBody = Map.of(
             "name", "web",
             "active", true,
@@ -84,40 +42,79 @@ public class GitHubClient {
         );
 
         try {
-            Map<String, Object> response = webClientBuilder.build()
-                .post()
-                .uri(apiUrl)
+            Map<String, Object> response = restClient.post()
+                .uri("/repos/{owner}/{repo}/hooks", owner, repo)
                 .header("Authorization", "Bearer " + accessToken)
                 .header("Accept", "application/vnd.github.v3+json")
-                .bodyValue(requestBody)
+                .body(requestBody)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                .onStatus(HttpStatusCode::isError, (request, clientResponse) -> {
+                    throw toRegisterException(clientResponse);
                 })
-                .block();
+                .body(new ParameterizedTypeReference<>() {
+                });
 
-            Number idNumber = (Number) response.get("id");
+            if (response == null || !(response.get("id") instanceof Number idNumber)) {
+                throw new GitHubException(GitHubErrorCode.WEBHOOK_REGISTER_FAILED);
+            }
             return idNumber.longValue();
-        } catch (Exception e) {
+        } catch (GitHubException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
             throw new GitHubException(GitHubErrorCode.WEBHOOK_REGISTER_FAILED);
         }
     }
 
     public void deleteWebhook(String accessToken, String owner, String repo, Long webhookId) {
-        String apiUrl =
-            "https://api.github.com/repos/" + owner + "/" + repo + "/hooks/" + webhookId;
-
         try {
-            webClientBuilder.build()
-                .delete()
-                .uri(apiUrl)
+            restClient.delete()
+                .uri("/repos/{owner}/{repo}/hooks/{webhookId}", owner, repo, webhookId)
                 .header("Authorization", "Bearer " + accessToken)
                 .header("Accept", "application/vnd.github.v3+json")
                 .retrieve()
-                .toBodilessEntity()
-                .block();
-        } catch (Exception e) {
+                .toBodilessEntity();
+        } catch (RuntimeException exception) {
             throw new GitHubException(GitHubErrorCode.WEBHOOK_DELETE_FAILED);
         }
     }
-}
 
+    private static RestClient createRestClient() {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(2));
+        requestFactory.setReadTimeout(Duration.ofSeconds(5));
+        return RestClient.builder()
+            .baseUrl("https://api.github.com")
+            .requestFactory(requestFactory)
+            .build();
+    }
+
+    private GitHubException toRegisterException(ClientHttpResponse response) throws IOException {
+        HttpStatusCode status = response.getStatusCode();
+        if (status.value() == 401) {
+            return new GitHubException(GitHubErrorCode.INVALID_TOKEN);
+        }
+        if (status.value() == 404) {
+            return new GitHubException(GitHubErrorCode.REPO_NOT_FOUND);
+        }
+        if (status.is5xxServerError()) {
+            return new GitHubException(GitHubErrorCode.SERVER_ERROR);
+        }
+        if (status.value() == 429) {
+            return new GitHubException(GitHubErrorCode.CLIENT_ERROR);
+        }
+        if (status.value() == 403) {
+            if ("0".equals(response.getHeaders().getFirst("X-RateLimit-Remaining"))
+                    || response.getHeaders().getFirst("Retry-After") != null
+                    || containsSecondaryRateLimitMessage(response)) {
+                return new GitHubException(GitHubErrorCode.CLIENT_ERROR);
+            }
+            return new GitHubException(GitHubErrorCode.UNAUTHORIZED_REPO);
+        }
+        return new GitHubException(GitHubErrorCode.CLIENT_ERROR);
+    }
+
+    private boolean containsSecondaryRateLimitMessage(ClientHttpResponse response) throws IOException {
+        String responseBody = StreamUtils.copyToString(response.getBody(), StandardCharsets.UTF_8);
+        return responseBody.toLowerCase(Locale.ROOT).contains("secondary rate limit");
+    }
+}

@@ -34,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			"/swagger-ui",
 			"/"
 	);
+	private static final String REFRESH_REQUIRED_CODE = "AUTH_REFRESH_REQUIRED";
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -82,6 +83,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {
 		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 		response.setContentType("application/json; charset=utf-8");
-		response.getWriter().write("{\"message\":\"" + message + "\"}");
+		response.getWriter().write("{\"code\":\"" + REFRESH_REQUIRED_CODE + "\",\"message\":\"" + message + "\"}");
 	}
 }
