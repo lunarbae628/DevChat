@@ -17,6 +17,8 @@
 /backend/perf/query-analysis/results/*.txt
 /backend/perf/query-analysis/results/*.json
 /backend/perf/github-webhook/results/*.json
+!/backend/perf/github-webhook/results/live-github-baseline.json
+!/backend/perf/github-webhook/results/live-github-optimized.json
 
 # Local AI workflow logs
 /ai/logs/*.jsonl

@@ -35,8 +35,10 @@ curl_bin=${CURL_BIN:-curl}
 api_url="https://api.github.com/repos/$TARGET_REPOSITORY"
 temp_dir=$(mktemp -d)
 current_webhook_id=""
+current_callback_url=""
 create_elapsed_seconds=""
 cleanup_failed_webhook_ids=()
+unverified_create_callback_urls=()
 durations_ms=()
 requests_per_iteration=()
 started_at_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -58,9 +60,11 @@ cleanup_current_webhook() {
         -o /dev/null; then
         cleanup_failed_webhook_ids+=("$current_webhook_id")
         current_webhook_id=""
+        current_callback_url=""
         return 1
     fi
     current_webhook_id=""
+    current_callback_url=""
 }
 
 write_result() {
@@ -69,11 +73,12 @@ write_result() {
     fi
 
     python3 - "$result_path" "$scenario" "$TARGET_REPOSITORY" "$started_at_utc" "$ITERATIONS" "$INTERVAL_SECONDS" \
-        "${durations_ms[*]}" "${requests_per_iteration[*]}" "${cleanup_failed_webhook_ids[*]-}" <<'PY'
+        "${durations_ms[*]-}" "${requests_per_iteration[*]-}" "${cleanup_failed_webhook_ids[*]-}" \
+        "${unverified_create_callback_urls[*]-}" <<'PY'
 import json
 import sys
 
-result_path, scenario, repository, started_at_utc, planned_iterations, interval, durations, requests, cleanup_failures = sys.argv[1:]
+result_path, scenario, repository, started_at_utc, planned_iterations, interval, durations, requests, cleanup_failures, unverified_urls = sys.argv[1:]
 result = {
     "scenario": scenario,
     "repository": repository,
@@ -84,6 +89,7 @@ result = {
     "durations_ms": [float(value) for value in durations.split()] if durations else [],
     "requests_per_iteration": [int(value) for value in requests.split()] if requests else [],
     "cleanup_failed_webhook_ids": [int(value) for value in cleanup_failures.split()] if cleanup_failures else [],
+    "unverified_create_callback_urls": unverified_urls.split() if unverified_urls else [],
 }
 with open(result_path, "w") as result_file:
     json.dump(result, result_file, indent=2)
@@ -94,6 +100,10 @@ PY
 
 cleanup() {
     cleanup_current_webhook || true
+    if [[ -n "$current_callback_url" ]]; then
+        unverified_create_callback_urls+=("$current_callback_url")
+        current_callback_url=""
+    fi
     write_result
     rm -rf "$temp_dir"
 }
@@ -161,6 +171,7 @@ PY
 
 for iteration in $(seq 1 "$ITERATIONS"); do
     elapsed_parts=()
+    request_count=1
     if [[ "$scenario" == "baseline" ]]; then
         elapsed_parts+=("$("$curl_bin" --fail --silent --show-error \
             --connect-timeout 5 --max-time 20 \
@@ -168,15 +179,15 @@ for iteration in $(seq 1 "$ITERATIONS"); do
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -o "$temp_dir/repository-response.json" \
             -w "%{time_total}")")
-        requests_per_iteration+=(2)
-    else
-        requests_per_iteration+=(1)
+        request_count=2
     fi
 
     callback_url="${CALLBACK_URL%/}/$scenario/$iteration"
+    current_callback_url="$callback_url"
     create_webhook "$callback_url"
     elapsed_parts+=("$create_elapsed_seconds")
     durations_ms+=("$(to_millis "${elapsed_parts[@]}")")
+    requests_per_iteration+=("$request_count")
     if ! cleanup_current_webhook; then
         write_result
         echo "webhook cleanup failed; stopped before the next creation: $result_path" >&2

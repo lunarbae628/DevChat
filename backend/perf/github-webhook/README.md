@@ -30,7 +30,7 @@ MOCK_GITHUB_DELAY_MS=100 bash scripts/measure.sh baseline
 MOCK_GITHUB_DELAY_MS=100 bash scripts/measure.sh optimized
 ```
 
-두 시나리오는 워밍업 5회 뒤 30회를 측정한다. 결과 JSON은 `results/`에 생성되며 Git에서 제외된다. 각 결과의 `durations_ms`로 p50과 p95를 계산하고, `requests_per_iteration`이 기준 2회와 개선 1회인지 함께 확인한다.
+두 시나리오는 워밍업 5회 뒤 30회를 측정한다. 결과 JSON은 `results/`에 로컬로 생성되며 Git에서 제외된다. 각 결과의 `durations_ms`로 p50과 p95를 계산하고, `requests_per_iteration`이 기준 2회와 개선 1회인지 함께 확인한다.
 
 ## 검증
 
@@ -63,6 +63,7 @@ bash backend/perf/github-webhook/scripts/measure_live_github.sh optimized
 - baseline은 `GET /repos/{owner}/{repo}` 뒤 webhook `POST`를, optimized는 webhook `POST`만 측정한다.
 - 측정 시간에는 GET·POST의 `curl` 경과 시간만 포함하고, webhook DELETE와 3초 대기는 포함하지 않는다.
 - 각 POST 응답의 id만 즉시 DELETE한다. DELETE가 실패하면 다음 webhook을 만들지 않고 중단하며, 실패 id와 부분 결과를 JSON에 남긴다.
+- POST가 성공했는지 확인할 수 없는 전송 실패는 해당 callback URL을 `unverified_create_callback_urls`에 남긴다. 이 경우에는 다음 POST를 만들지 않고, URL과 정확히 일치하는 webhook이 남았는지 별도로 확인해야 한다.
 - 결과 JSON에는 토큰, Authorization 헤더, GitHub 응답 본문을 기록하지 않는다.
 
 2026-08-17 실제 GitHub 관측 결과는 다음과 같다. baseline과 optimized 모두 50회를 완료했고, cleanup 실패 id는 없었으며, 측정용 callback URL의 webhook이 테스트 레포에 남지 않았음을 API 조회로 확인했다.
@@ -72,7 +73,9 @@ bash backend/perf/github-webhook/scripts/measure_live_github.sh optimized
 | baseline | 2 | 807.195ms | 884.977ms |
 | optimized | 1 | 396.403ms | 548.605ms |
 
-이 결과는 실제 GitHub 네트워크를 포함한 외부 HTTP 경로의 관측값이다. DevChat 인증, Controller, 데이터베이스, 채팅방 생성과 GitHub webhook 수신 처리를 포함하지 않으므로 채팅방 API 전체 성능이나 운영 SLO를 뜻하지 않는다. 원본 `live-github-*.json`은 `results/`에 로컬로만 남고 Git에서 제외된다.
+이 결과는 실제 GitHub 네트워크를 포함한 외부 HTTP 경로의 관측값이다. DevChat 인증, Controller, 데이터베이스, 채팅방 생성과 GitHub webhook 수신 처리를 포함하지 않으므로 채팅방 API 전체 성능이나 운영 SLO를 뜻하지 않는다. 50개 원본 관측값은 추적 대상인 [`results/live-github-baseline.json`](results/live-github-baseline.json), [`results/live-github-optimized.json`](results/live-github-optimized.json)에 보존한다.
+
+원래 측정 시점에는 OS, `curl` 정확한 버전, 네트워크 사업자·지역·프록시 여부를 별도 기록하지 않았다. 따라서 이 두 결과의 네트워크 세부 환경은 사후에 확정할 수 없다. 수치는 위 원본 JSON으로 재계산할 수 있지만, 해당 환경 정보가 필요한 비교는 새 측정을 실행해야 한다.
 
 ### GitHub API 참조
 

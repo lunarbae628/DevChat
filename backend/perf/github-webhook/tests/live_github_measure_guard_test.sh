@@ -114,6 +114,57 @@ assert result["measured_iterations"] == 1
 assert result["cleanup_failed_webhook_ids"] == [42]
 PY
 
+fake_post_response_loss_curl="$temp_dir/post-response-loss-curl"
+post_response_loss_log="$temp_dir/post-response-loss.log"
+
+cat > "$fake_post_response_loss_curl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+method=GET
+for ((index = 1; index <= $#; index++)); do
+    if [[ "${!index}" == "-X" ]]; then
+        next=$((index + 1))
+        method=${!next}
+    fi
+done
+printf '%s\n' "$method" >> "${CURL_LOG:?}"
+if [[ "$method" == "POST" ]]; then
+    exit 28
+fi
+printf '0.010'
+EOF
+chmod +x "$fake_post_response_loss_curl"
+
+if PATH="$temp_dir:$PATH" CURL_BIN="$fake_post_response_loss_curl" CURL_LOG="$post_response_loss_log" \
+    RESULTS_DIR="$temp_dir/post-response-loss-results" \
+    GITHUB_TOKEN=dummy \
+    GITHUB_REPOSITORY=lunarbae628/devchatGithubApiTest \
+    CALLBACK_URL=https://example.com/devchat-github-api-perf \
+    LIVE_GITHUB_PERF_CONFIRM=I_UNDERSTAND_THIS_CREATES_WEBHOOKS \
+    bash "$script_path" optimized; then
+    echo "POST response loss should stop the measurement" >&2
+    exit 1
+fi
+if [[ $(wc -l < "$post_response_loss_log") -ne 1 ]]; then
+    echo "POST response loss should not allow another request" >&2
+    exit 1
+fi
+python3 - "$temp_dir/post-response-loss-results/live-github-optimized.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as result_file:
+    result = json.load(result_file)
+
+assert result["measured_iterations"] == 0
+assert result["durations_ms"] == []
+assert result["requests_per_iteration"] == []
+assert result["unverified_create_callback_urls"] == [
+    "https://example.com/devchat-github-api-perf/optimized/1"
+]
+PY
+
 fake_success_curl="$temp_dir/success-curl"
 cat > "$fake_success_curl" <<'EOF'
 #!/usr/bin/env bash

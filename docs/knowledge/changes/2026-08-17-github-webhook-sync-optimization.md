@@ -94,7 +94,9 @@ optimized : POST /repos/owner/repo/hooks
 | baseline | 2026-08-17T09:36:18Z | 2 | 807.195ms | 884.977ms |
 | optimized | 2026-08-17T09:40:09Z | 1 | 396.403ms | 548.605ms |
 
-원본 결과는 `backend/perf/github-webhook/results/live-github-baseline.json`, `backend/perf/github-webhook/results/live-github-optimized.json`에 로컬로만 남고 Git에서 제외된다. p95는 각 50개 관측값의 nearest-rank 95번째 백분위로 계산했다.
+원본 결과는 `backend/perf/github-webhook/results/live-github-baseline.json`, `backend/perf/github-webhook/results/live-github-optimized.json`에 Git 추적으로 보존한다. p95는 각 50개 관측값의 nearest-rank 95번째 백분위로 계산했다.
+
+원래 측정 시점에는 OS, `curl` 정확한 버전, 네트워크 사업자·지역·프록시 여부를 기록하지 않았다. 따라서 원본 관측값은 재계산·감사할 수 있지만 해당 네트워크 세부 환경은 사후에 확정할 수 없다. 이 정보가 필요한 비교는 새 측정을 통해 다시 수집해야 한다.
 
 이 비교는 실제 GitHub 네트워크와 API 처리 시간을 포함하지만, DevChat 채팅방 생성 API 전체 측정은 아니다. 로컬 DevChat 실행 환경, OAuth 로그인, Controller, 데이터베이스, GitHub webhook 수신은 포함하지 않았다. 따라서 실제 GitHub 외부 HTTP 경로의 저부하 관측 근거로만 사용한다.
 
